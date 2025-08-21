@@ -173,7 +173,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 16, backgroundColor: '#FCE38A' },
   greetingContainer: { marginBottom: 20 },
   greetingText: { fontSize: 26, fontWeight: 'bold', color: '#333' },
   quickButtons: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
-  quickButtonText: { color: '#fff', fontWeight: 'bold' },
+  quickButtonText: { color: '#000000ff', fontWeight: 'bold' },
   tipContainer: { marginBottom: 20, padding: 12, backgroundColor: '#f1f1f1', borderRadius: 10 },
   tipText: { fontSize: 16, fontStyle: 'italic', marginTop: 4 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold' },

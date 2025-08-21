@@ -28,6 +28,9 @@ const kitchenOptions = [
   'Air Fryer',
 ];
 
+// 🔹 Use your Expo tunnel URL here
+const TUNNEL_URL = 'https://f7b2b5996b4f.ngrok-free.app';
+
 export default function OnboardingScreen() {
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
@@ -65,20 +68,36 @@ export default function OnboardingScreen() {
   const handleSubmit = async () => {
     console.log({ selectedDietary, budget, cookingHours, mealTimes, selectedEquipment });
 
-    // Convert Dates to simple {hour, minute} objects before saving
     const simplifiedMealTimes = {
       breakfast: { hour: mealTimes.breakfast.getHours(), minute: mealTimes.breakfast.getMinutes() },
       lunch: { hour: mealTimes.lunch.getHours(), minute: mealTimes.lunch.getMinutes() },
       dinner: { hour: mealTimes.dinner.getHours(), minute: mealTimes.dinner.getMinutes() },
     };
 
-    // Save meal times as simplified object for Notifications tab
     await AsyncStorage.setItem('@mealTimes', JSON.stringify(simplifiedMealTimes));
-
-    // Schedule notifications using simplifiedMealTimes
     await scheduleDailyMealNotifications(simplifiedMealTimes);
 
-    // Navigate to home screen
+    // 🔹 Submit preferences to backend
+    try {
+      const res = await fetch(`${TUNNEL_URL}/api/preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dietary: selectedDietary,
+          equipment: selectedEquipment,
+          budget,
+          cookingHours,
+          mealTimes: simplifiedMealTimes,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.error('Failed to save preferences on server');
+      }
+    } catch (err) {
+      console.error('Error sending preferences to server:', err);
+    }
+
     router.replace('/(tabs)/home');
   };
 
