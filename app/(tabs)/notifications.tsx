@@ -1,69 +1,72 @@
+// notifications.tsx
+import { deleteMealNotification } from '@/lib/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-type MealTime = {
-  hour: number;
-  minute: number;
-};
-
-type MealTimes = {
-  [meal: string]: MealTime;
-};
+type MealTimes = Record<string, { hour: number; minute: number }>;
 
 export default function NotificationsScreen() {
   const [mealTimes, setMealTimes] = useState<MealTimes | null>(null);
 
   useEffect(() => {
-    const loadMealTimes = async () => {
-      const stored = await AsyncStorage.getItem('@mealTimes');
-      if (stored) {
+    const loadData = async () => {
+      const storedMealTimes = await AsyncStorage.getItem('@mealTimes');
+      if (storedMealTimes) {
         try {
-          const parsed: MealTimes = JSON.parse(stored);
-          setMealTimes(parsed);
+          setMealTimes(JSON.parse(storedMealTimes));
         } catch {
-          // In case parse fails, reset to null
-          setMealTimes(null);
+          setMealTimes({});
         }
       } else {
         setMealTimes({});
       }
     };
 
-    loadMealTimes();
+    loadData();
   }, []);
 
   const handleDelete = async (meal: string) => {
     if (!mealTimes) return;
 
-    const updated = { ...mealTimes };
-    delete updated[meal];
-    setMealTimes(updated);
+    const updatedMealTimes = { ...mealTimes };
+    delete updatedMealTimes[meal];
+    setMealTimes(updatedMealTimes);
 
-    if (Object.keys(updated).length === 0) {
+    if (Object.keys(updatedMealTimes).length === 0) {
       await AsyncStorage.removeItem('@mealTimes');
     } else {
-      await AsyncStorage.setItem('@mealTimes', JSON.stringify(updated));
+      await AsyncStorage.setItem('@mealTimes', JSON.stringify(updatedMealTimes));
     }
+
+    await deleteMealNotification(meal);
   };
 
-  const renderItem = ({ item }: { item: [string, MealTime] }) => {
+  const renderItem = ({ item }: { item: [string, { hour: number; minute: number }] }) => {
     const [meal, time] = item;
+    if (!time) return null;
 
-    // Defensive check if time exists
-    if (!time || typeof time.hour !== 'number' || typeof time.minute !== 'number') {
-      return null;
-    }
-
-    const timeStr = `${time.hour.toString().padStart(2, '0')}:${time.minute
-      .toString()
-      .padStart(2, '0')}`;
+    const timeStr = `${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}`;
 
     return (
       <View style={styles.card}>
-        <Text style={styles.mealTitle}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
-        <Text style={styles.time}>{timeStr}</Text>
-        <Pressable onPress={() => handleDelete(meal)} style={styles.deleteButton}>
+        <View>
+          <Text style={styles.mealTitle}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
+          <Text style={styles.time}>{timeStr}</Text>
+        </View>
+        <Pressable
+          style={styles.deleteButton}
+          onPress={() =>
+            Alert.alert(
+              'Delete Notification',
+              `Are you sure you want to delete the ${meal} notification?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => handleDelete(meal) },
+              ]
+            )
+          }
+        >
           <Text style={styles.deleteText}>❌</Text>
         </Pressable>
       </View>
@@ -90,20 +93,9 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#FCE38A',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  loading: {
-    fontSize: 16,
-    color: '#555',
-  },
+  container: { flex: 1, padding: 30, paddingTop: 60, backgroundColor: '#FCE38A' },
+  heading: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+  loading: { fontSize: 16, color: '#555' },
   card: {
     backgroundColor: '#fff',
     padding: 16,
@@ -113,18 +105,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  mealTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  time: {
-    fontSize: 16,
-    color: '#666',
-  },
-  deleteButton: {
-    padding: 8,
-  },
-  deleteText: {
-    fontSize: 18,
-  },
+  mealTitle: { fontSize: 18, fontWeight: 'bold' },
+  time: { fontSize: 16, color: '#666' },
+  deleteButton: { padding: 8 },
+  deleteText: { fontSize: 18 },
 });

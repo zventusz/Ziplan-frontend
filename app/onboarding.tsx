@@ -1,35 +1,14 @@
-import { scheduleDailyMealNotifications } from '@/lib/notifications'; // ✅ correct path
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ NEW
-import DateTimePicker from '@react-native-community/datetimepicker';
-import Slider from '@react-native-community/slider';
+// onboarding.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Checkbox from 'expo-checkbox';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Button, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Button, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-const dietaryOptions = [
-  'Dairy',
-  'Vegan',
-  'Vegetarian',
-  'Nut Allergy',
-  'Gluten-Free',
-  'Halal',
-  'Kosher',
-  'Keto',
-];
+const dietaryOptions = ['Dairy', 'Vegan', 'Vegetarian', 'Nut Allergy', 'Gluten-Free', 'Halal', 'Kosher', 'Keto'];
+const kitchenOptions = ['Stove', 'Microwave', 'Pots & Pans', 'Slow Cooker', 'Oven', 'Blender', 'Air Fryer', 'High Pressure Cooker'];
 
-const kitchenOptions = [
-  'Stove',
-  'Microwave',
-  'Pots & Pans',
-  'Slow Cooker',
-  'Oven',
-  'Blender',
-  'Air Fryer',
-];
-
-// 🔹 Use your Expo tunnel URL here
-const TUNNEL_URL = 'https://f7b2b5996b4f.ngrok-free.app';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function OnboardingScreen() {
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
@@ -37,63 +16,64 @@ export default function OnboardingScreen() {
   const [budget, setBudget] = useState(50);
   const [cookingHours, setCookingHours] = useState(3);
   const [mealTimes, setMealTimes] = useState({
-    breakfast: new Date(0, 0, 0, 8, 0),
-    lunch: new Date(0, 0, 0, 12, 0),
-    dinner: new Date(0, 0, 0, 18, 0),
-  });
-  const [showPicker, setShowPicker] = useState<{ meal: keyof typeof mealTimes | null; visible: boolean }>({
-    meal: null,
-    visible: false,
+    breakfast: { hour: 8, minute: 0 },
+    lunch: { hour: 12, minute: 0 },
+    dinner: { hour: 18, minute: 0 },
   });
 
-  const toggleDietary = (option: string) => {
-    setSelectedDietary((prev) =>
-      prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]
-    );
-  };
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const [savedDietary, savedEquipment, savedBudget, savedCookingHours, savedMealTimes] = await Promise.all([
+          AsyncStorage.getItem('@dietary'),
+          AsyncStorage.getItem('@equipment'),
+          AsyncStorage.getItem('@budget'),
+          AsyncStorage.getItem('@cookingHours'),
+          AsyncStorage.getItem('@mealTimes'),
+        ]);
 
-  const toggleEquipment = (item: string) => {
-    setSelectedEquipment((prev) =>
-      prev.includes(item) ? prev.filter((e) => e !== item) : [...prev, item]
-    );
-  };
+        if (savedDietary) setSelectedDietary(JSON.parse(savedDietary));
+        if (savedEquipment) setSelectedEquipment(JSON.parse(savedEquipment));
+        if (savedBudget) setBudget(Number(savedBudget));
+        if (savedCookingHours) setCookingHours(Number(savedCookingHours));
+        if (savedMealTimes) setMealTimes(JSON.parse(savedMealTimes));
+      } catch (err) {
+        console.error('Error loading preferences:', err);
+      }
+    };
+    loadPreferences();
+  }, []);
 
-  const onChangeTime = (_event: any, selectedDate?: Date) => {
-    if (selectedDate && showPicker.meal) {
-      setMealTimes((prev) => ({ ...prev, [showPicker.meal!]: selectedDate }));
+  const toggleDietary = (option: string) => setSelectedDietary(prev => prev.includes(option) ? prev.filter(o => o !== option) : [...prev, option]);
+  const toggleEquipment = (item: string) => setSelectedEquipment(prev => prev.includes(item) ? prev.filter(e => e !== item) : [...prev, item]);
+
+  const handleTimeChange = (meal: keyof typeof mealTimes, value: string) => {
+    // Expected format "HH:MM"
+    const [hourStr, minuteStr] = value.split(':');
+    const hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    if (!isNaN(hour) && !isNaN(minute)) {
+      setMealTimes(prev => ({ ...prev, [meal]: { hour, minute } }));
     }
-    setShowPicker({ meal: null, visible: false });
   };
 
   const handleSubmit = async () => {
-    console.log({ selectedDietary, budget, cookingHours, mealTimes, selectedEquipment });
+    // Save locally
+    await AsyncStorage.setItem('@dietary', JSON.stringify(selectedDietary));
+    await AsyncStorage.setItem('@equipment', JSON.stringify(selectedEquipment));
+    await AsyncStorage.setItem('@budget', budget.toString());
+    await AsyncStorage.setItem('@cookingHours', cookingHours.toString());
+    await AsyncStorage.setItem('@mealTimes', JSON.stringify(mealTimes));
 
-    const simplifiedMealTimes = {
-      breakfast: { hour: mealTimes.breakfast.getHours(), minute: mealTimes.breakfast.getMinutes() },
-      lunch: { hour: mealTimes.lunch.getHours(), minute: mealTimes.lunch.getMinutes() },
-      dinner: { hour: mealTimes.dinner.getHours(), minute: mealTimes.dinner.getMinutes() },
-    };
-
-    await AsyncStorage.setItem('@mealTimes', JSON.stringify(simplifiedMealTimes));
-    await scheduleDailyMealNotifications(simplifiedMealTimes);
-
-    // 🔹 Submit preferences to backend
+    // Submit preferences to backend
     try {
-      const res = await fetch(`${TUNNEL_URL}/api/preferences`, {
+      const res = await fetch(`${API_URL}/api/preferences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dietary: selectedDietary,
-          equipment: selectedEquipment,
-          budget,
-          cookingHours,
-          mealTimes: simplifiedMealTimes,
-        }),
+        body: JSON.stringify({ dietary: selectedDietary, equipment: selectedEquipment, budget, cookingHours, mealTimes }),
       });
       const data = await res.json();
-      if (!data.success) {
-        console.error('Failed to save preferences on server');
-      }
+      if (!data.success) console.error('Failed to save preferences on server');
     } catch (err) {
       console.error('Error sending preferences to server:', err);
     }
@@ -104,70 +84,49 @@ export default function OnboardingScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Select Dietary Restrictions</Text>
-      {dietaryOptions.map((option) => (
+      {dietaryOptions.map(option => (
         <View key={option} style={styles.checkboxContainer}>
-          <Checkbox
-            value={selectedDietary.includes(option)}
-            onValueChange={() => toggleDietary(option)}
-          />
+          <Checkbox value={selectedDietary.includes(option)} onValueChange={() => toggleDietary(option)} />
           <Text style={styles.label}>{option}</Text>
         </View>
       ))}
 
       <Text style={styles.title}>Weekly Budget: ${budget}</Text>
-      <Slider
-        style={{ width: '100%', height: 40 }}
-        minimumValue={1}
-        maximumValue={200}
-        step={1}
-        value={budget}
-        onValueChange={setBudget}
-        minimumTrackTintColor="#CEEE67"
-        maximumTrackTintColor="#d3d3d3"
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={budget.toString()}
+        onChangeText={v => setBudget(Number(v))}
       />
 
-      <Text style={styles.title}>
-        Weekly Cooking Hours: {cookingHours} {cookingHours === 1 ? 'hour' : 'hours'}
-      </Text>
-      <Slider
-        style={{ width: '100%', height: 40 }}
-        minimumValue={1}
-        maximumValue={10}
-        step={1}
-        value={cookingHours}
-        onValueChange={setCookingHours}
-        minimumTrackTintColor="#CEEE67"
-        maximumTrackTintColor="#d3d3d3"
+      <Text style={styles.title}>Weekly Cooking Hours: {cookingHours}</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={cookingHours.toString()}
+        onChangeText={v => setCookingHours(Number(v))}
       />
 
       <Text style={styles.title}>Meal Times</Text>
-      {(['breakfast', 'lunch', 'dinner'] as const).map((meal) => (
+      {(['breakfast', 'lunch', 'dinner'] as const).map(meal => (
         <View key={meal} style={styles.timeRow}>
           <Text style={styles.label}>{meal.charAt(0).toUpperCase() + meal.slice(1)}:</Text>
-          <Button
-            title={mealTimes[meal].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            onPress={() => setShowPicker({ meal, visible: true })}
-          />
+          {Platform.OS === 'web' ? (
+            <TextInput
+              style={styles.input}
+              value={`${mealTimes[meal].hour.toString().padStart(2, '0')}:${mealTimes[meal].minute.toString().padStart(2, '0')}`}
+              onChangeText={v => handleTimeChange(meal, v)}
+            />
+          ) : (
+            <Text>{`${mealTimes[meal].hour.toString().padStart(2, '0')}:${mealTimes[meal].minute.toString().padStart(2, '0')}`}</Text>
+          )}
         </View>
       ))}
 
-      {showPicker.visible && showPicker.meal && (
-        <DateTimePicker
-          value={mealTimes[showPicker.meal]}
-          mode="time"
-          is24Hour={false}
-          display="spinner"
-          onChange={onChangeTime}
-        />
-      )}
-
       <Text style={styles.title}>Available Kitchen Equipment</Text>
-      {kitchenOptions.map((item) => (
+      {kitchenOptions.map(item => (
         <View key={item} style={styles.checkboxContainer}>
-          <Checkbox
-            value={selectedEquipment.includes(item)}
-            onValueChange={() => toggleEquipment(item)}
-          />
+          <Checkbox value={selectedEquipment.includes(item)} onValueChange={() => toggleEquipment(item)} />
           <Text style={styles.label}>{item}</Text>
         </View>
       ))}
@@ -178,28 +137,10 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#FCE38A',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 5,
-  },
-  label: {
-    marginLeft: 8,
-    fontSize: 16,
-  },
-  title: {
-    fontSize: 18,
-    marginVertical: 10,
-    fontWeight: 'bold',
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 10,
-  },
+  container: { padding: 20, backgroundColor: '#FCE38A' },
+  checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 },
+  label: { marginLeft: 8, fontSize: 16 },
+  title: { fontSize: 18, marginVertical: 10, fontWeight: 'bold' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 10 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 6, minWidth: 80, textAlign: 'center' },
 });

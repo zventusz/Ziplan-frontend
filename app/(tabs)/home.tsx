@@ -42,6 +42,9 @@ export default function HomeScreen() {
   ];
   const [tipOfTheDay, setTipOfTheDay] = useState('');
 
+  // 🔥 Streak Counter State
+  const [streak, setStreak] = useState(1);
+
   // Set greeting based on current hour
   useEffect(() => {
     const hour = new Date().getHours();
@@ -85,6 +88,45 @@ export default function HomeScreen() {
     });
   }, []);
 
+  // 🔥 Handle Streak Counter
+  useEffect(() => {
+    const checkStreak = async () => {
+      const today = new Date();
+      const todayStr = today.toDateString();
+
+      const lastLogin = await AsyncStorage.getItem('lastLogin');
+      const savedStreak = await AsyncStorage.getItem('streakCount');
+
+      if (!lastLogin) {
+        // first login
+        setStreak(1);
+        await AsyncStorage.setItem('streakCount', '1');
+      } else {
+        const lastDate = new Date(lastLogin);
+        const diffTime = today.getTime() - lastDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // consecutive day → increase streak
+          const newStreak = (savedStreak ? parseInt(savedStreak) : 1) + 1;
+          setStreak(newStreak);
+          await AsyncStorage.setItem('streakCount', newStreak.toString());
+        } else if (diffDays > 1) {
+          // missed a day → reset streak
+          setStreak(1);
+          await AsyncStorage.setItem('streakCount', '1');
+        } else {
+          // same day → keep streak
+          setStreak(savedStreak ? parseInt(savedStreak) : 1);
+        }
+      }
+
+      await AsyncStorage.setItem('lastLogin', todayStr);
+    };
+
+    checkStreak();
+  }, []);
+
   // Handlers
   const removeItem = (index: number) => {
     const updated = [...shoppingList];
@@ -122,6 +164,12 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.quickButton} onPress={() => router.push('/explore')}>
           <Text style={styles.quickButtonText}>🧾 Browse Recipes</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* 🔥 Streak Counter */}
+      <View style={styles.streakContainer}>
+        <Text style={styles.sectionTitle}>🔥 Daily Login Streak</Text>
+        <Text style={styles.streakText}>{streak} day{streak !== 1 ? 's' : ''} in a row</Text>
       </View>
 
       {/* Cooking Tip of the Day */}
@@ -173,7 +221,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#FCE38A' },
+  container: { flex: 1, padding: 30, paddingTop: 60, backgroundColor: '#FCE38A' },
   greetingContainer: { marginBottom: 20 },
   greetingText: { fontSize: 26, fontWeight: 'bold', color: '#333' },
   quickButtons: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
@@ -186,6 +234,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickButtonText: { color: '#000000ff', fontWeight: 'bold' },
+
+  // 🔥 Streak Counter Styles
+  streakContainer: {
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: '#fff3cd',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  streakText: { fontSize: 16, fontWeight: '600', marginTop: 4 },
+
   tipContainer: { marginBottom: 20, padding: 12, backgroundColor: '#f1f1f1', borderRadius: 10 },
   tipText: { fontSize: 16, fontStyle: 'italic', marginTop: 4 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold' },
