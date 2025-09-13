@@ -1,8 +1,44 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Image, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Tabs, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Platform, View } from 'react-native';
 
 export default function TabLayout() {
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('@userToken'); // 👈 must match what you save on login
+        if (token) {
+          setAuthenticated(true);
+        } else {
+          router.replace('/login'); // 🚀 kick to login if not logged in
+        }
+      } catch (e) {
+        console.error('Error checking auth:', e);
+        router.replace('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!authenticated) {
+    return null; // while redirecting
+  }
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
