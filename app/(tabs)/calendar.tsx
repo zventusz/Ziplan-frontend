@@ -180,11 +180,13 @@ export default function CalendarScreen() {
 
             {/* Date picker */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
+              <input
+                type="date"
+                className="border rounded p-2 w-full"
                 value={format(newEvent.date, 'yyyy-MM-dd')}
-                onChangeText={(val) => setNewEvent((p) => ({ ...p, date: new Date(val) }))}
-                placeholder="YYYY-MM-DD"
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, date: new Date(e.target.value) }))
+                }
               />
             ) : (
               <>
@@ -216,11 +218,13 @@ export default function CalendarScreen() {
 
             {/* Start */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
-                placeholder="Start time (HH:mm)"
+              <input
+                type="time"
+                className="border rounded p-2 w-full"
                 value={newEvent.start}
-                onChangeText={(t) => setNewEvent((p) => ({ ...p, start: t }))}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, start: e.target.value }))
+                }
               />
             ) : (
               <>
@@ -245,11 +249,13 @@ export default function CalendarScreen() {
 
             {/* End */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
-                placeholder="End time (HH:mm)"
+              <input
+                type="time"
+                className="border rounded p-2 w-full"
                 value={newEvent.end}
-                onChangeText={(t) => setNewEvent((p) => ({ ...p, end: t }))}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, end: e.target.value }))
+                }
               />
             ) : (
               <>
@@ -271,6 +277,7 @@ export default function CalendarScreen() {
                 )}
               </>
             )}
+
 
             <TextInput
               placeholder="Description"
@@ -297,11 +304,13 @@ export default function CalendarScreen() {
 
             {/* Date */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
+              <input
+                type="date"
+                className="border rounded p-2 w-full mb-2"
                 value={format(newEvent.date, 'yyyy-MM-dd')}
-                onChangeText={(val) => setNewEvent((p) => ({ ...p, date: new Date(val) }))}
-                placeholder="YYYY-MM-DD"
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, date: new Date(e.target.value) }))
+                }
               />
             ) : (
               <>
@@ -333,11 +342,13 @@ export default function CalendarScreen() {
 
             {/* Start */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
-                placeholder="Start time (HH:mm)"
+              <input
+                type="time"
+                className="border rounded p-2 w-full mb-2"
                 value={newEvent.start}
-                onChangeText={(t) => setNewEvent((p) => ({ ...p, start: t }))}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, start: e.target.value }))
+                }
               />
             ) : (
               <>
@@ -362,11 +373,13 @@ export default function CalendarScreen() {
 
             {/* End */}
             {Platform.OS === 'web' ? (
-              <TextInput
-                style={styles.input}
-                placeholder="End time (HH:mm)"
+              <input
+                type="time"
+                className="border rounded p-2 w-full mb-2"
                 value={newEvent.end}
-                onChangeText={(t) => setNewEvent((p) => ({ ...p, end: t }))}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, end: e.target.value }))
+                }
               />
             ) : (
               <>
@@ -396,6 +409,7 @@ export default function CalendarScreen() {
               multiline
               onChangeText={(t) => setNewEvent((p) => ({ ...p, description: t }))}
             />
+
             <TouchableOpacity style={styles.saveButton} onPress={saveEditedEvent}>
               <Text style={styles.saveButtonText}>Update</Text>
             </TouchableOpacity>
