@@ -32,39 +32,34 @@ export default function CalendarScreen() {
     date: new Date(),
   });
   const [editingEventIndex, setEditingEventIndex] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
 
-  // NEW: States for start/end time pickers
-  const [startTime, setStartTime] = useState(new Date(new Date().setHours(8, 0)));
-  const [endTime, setEndTime] = useState(new Date(new Date().setHours(10, 0)));
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
   const [showEditStartPicker, setShowEditStartPicker] = useState(false);
   const [showEditEndPicker, setShowEditEndPicker] = useState(false);
 
-  // Load saved events from AsyncStorage on mount
+  // Load saved events
   useEffect(() => {
     const loadEvents = async () => {
       try {
         const savedEventsStr = await AsyncStorage.getItem(EVENTS_STORAGE_KEY);
-        if (savedEventsStr) {
-          setEvents(JSON.parse(savedEventsStr));
-        }
+        if (savedEventsStr) setEvents(JSON.parse(savedEventsStr));
       } catch (e) {
-        console.error('Failed to load events from storage', e);
+        console.error('Failed to load events', e);
       }
     };
     loadEvents();
   }, []);
 
-  // Save events to AsyncStorage whenever events state changes
+  // Save events
   useEffect(() => {
     const saveEvents = async () => {
       try {
         await AsyncStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(events));
       } catch (e) {
-        console.error('Failed to save events to storage', e);
+        console.error('Failed to save events', e);
       }
     };
     saveEvents();
@@ -81,176 +76,60 @@ export default function CalendarScreen() {
     }
   }, [openAddModal, prefillTitle, prefillDescription]);
 
-  // Sync start/end string times to Date objects when newEvent changes
-  useEffect(() => {
-    if (newEvent.start) {
-      const [h, m] = newEvent.start.split(':').map(Number);
-      const dt = new Date(newEvent.date);
-      dt.setHours(h, m);
-      setStartTime(dt);
-    }
-    if (newEvent.end) {
-      const [h, m] = newEvent.end.split(':').map(Number);
-      const dt = new Date(newEvent.date);
-      dt.setHours(h, m);
-      setEndTime(dt);
-    }
-  }, [newEvent.start, newEvent.end, newEvent.date]);
-
-  // Sync start/end string times to Date objects for edit modal
-  useEffect(() => {
-    if (editModalVisible && newEvent.start) {
-      const [h, m] = newEvent.start.split(':').map(Number);
-      const dt = new Date(newEvent.date);
-      dt.setHours(h, m);
-      setStartTime(dt);
-    }
-    if (editModalVisible && newEvent.end) {
-      const [h, m] = newEvent.end.split(':').map(Number);
-      const dt = new Date(newEvent.date);
-      dt.setHours(h, m);
-      setEndTime(dt);
-    }
-  }, [editModalVisible, newEvent.start, newEvent.end, newEvent.date]);
-
-  // New Event Date picker
-  const onChangeNewEventDate = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setNewEvent((prev) => ({ ...prev, date: selectedDate }));
-      setCurrentDate(selectedDate);
-    }
-  };
-
-  // Edit Event Date picker
-  const onChangeEditEventDate = (event, selectedDate) => {
-    setShowEditDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setNewEvent((prev) => ({ ...prev, date: selectedDate }));
-      setCurrentDate(selectedDate);
-    }
-  };
-
-  // Start time picker for New Event
-  const onStartTimeChange = (event, selectedTime) => {
-    setShowStartPicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      setStartTime(selectedTime);
-      setNewEvent((prev) => ({ ...prev, start: format(selectedTime, 'HH:mm') }));
-    }
-  };
-
-  // End time picker for New Event
-  const onEndTimeChange = (event, selectedTime) => {
-    setShowEndPicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      setEndTime(selectedTime);
-      setNewEvent((prev) => ({ ...prev, end: format(selectedTime, 'HH:mm') }));
-    }
-  };
-
-  // Start time picker for Edit Event
-  const onEditStartTimeChange = (event, selectedTime) => {
-    setShowEditStartPicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      setStartTime(selectedTime);
-      setNewEvent((prev) => ({ ...prev, start: format(selectedTime, 'HH:mm') }));
-    }
-  };
-
-  // End time picker for Edit Event
-  const onEditEndTimeChange = (event, selectedTime) => {
-    setShowEditEndPicker(Platform.OS === 'ios');
-    if (selectedTime) {
-      setEndTime(selectedTime);
-      setNewEvent((prev) => ({ ...prev, end: format(selectedTime, 'HH:mm') }));
-    }
-  };
-
+  // Handlers
   const addEvent = () => {
     if (newEvent.title && newEvent.start && newEvent.end) {
       setEvents((prev) => [
         ...prev,
-        { ...newEvent, date: newEvent.date, id: Date.now().toString() + Math.random() },
+        { ...newEvent, id: Date.now().toString() + Math.random() },
       ]);
       setNewEvent({ title: '', start: '', end: '', description: '', date: new Date() });
       setModalVisible(false);
-      setShowDatePicker(false);
-      setShowStartPicker(false);
-      setShowEndPicker(false);
     }
   };
 
   const saveEditedEvent = () => {
-    if (
-      editingEventIndex !== null &&
-      editingEventIndex >= 0 &&
-      editingEventIndex < events.length
-    ) {
-      const updatedEvents = [...events];
-      updatedEvents[editingEventIndex] = {
-        ...updatedEvents[editingEventIndex],
-        ...newEvent,
-        id: updatedEvents[editingEventIndex].id,
-      };
-      setEvents(updatedEvents);
+    if (editingEventIndex !== null) {
+      const updated = [...events];
+      updated[editingEventIndex] = { ...newEvent, id: events[editingEventIndex].id };
+      setEvents(updated);
       setEditModalVisible(false);
       setEditingEventIndex(null);
-      setShowEditDatePicker(false);
-      setShowEditStartPicker(false);
-      setShowEditEndPicker(false);
     }
   };
 
   const deleteEvent = () => {
-    if (
-      editingEventIndex !== null &&
-      editingEventIndex >= 0 &&
-      editingEventIndex < events.length
-    ) {
-      const updatedEvents = [...events];
-      updatedEvents.splice(editingEventIndex, 1);
-      setEvents(updatedEvents);
+    if (editingEventIndex !== null) {
+      const updated = [...events];
+      updated.splice(editingEventIndex, 1);
+      setEvents(updated);
       setEditModalVisible(false);
       setEditingEventIndex(null);
-      setShowEditDatePicker(false);
-      setShowEditStartPicker(false);
-      setShowEditEndPicker(false);
     }
   };
 
   const getEventsForDate = () =>
     events.filter(
-      (event) => new Date(event.date).toDateString() === currentDate.toDateString()
+      (e) => new Date(e.date).toDateString() === currentDate.toDateString()
     );
 
   const openEditModal = (event, index) => {
-    setNewEvent({
-      title: event.title,
-      start: event.start,
-      end: event.end,
-      description: event.description || '',
-      date: new Date(event.date),
-      id: event.id,
-    });
+    setNewEvent(event);
     setEditingEventIndex(index);
     setEditModalVisible(true);
   };
 
   const renderEvents = () =>
     getEventsForDate().map((event, idx) => {
-      const [startHour, startMin] = event.start.split(':').map(Number);
-      const [endHour, endMin] = event.end.split(':').map(Number);
-
-      const startMinutes = startHour * 60 + startMin;
-      const endMinutes = endHour * 60 + endMin;
-      const top = (startMinutes / 60) * 60;
-      const height = ((endMinutes - startMinutes) / 60) * 60;
+      const [sh, sm] = event.start.split(':').map(Number);
+      const [eh, em] = event.end.split(':').map(Number);
+      const top = (sh * 60 + sm) / 60;
+      const height = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
 
       return (
         <TouchableOpacity
           key={`${event.id}-${idx}`}
-          style={[styles.eventBlock, { top, height }]}
+          style={[styles.eventBlock, { top: top * 60, height: height * 60 }]}
           onPress={() => openEditModal(event, idx)}
         >
           <Text style={styles.eventText}>{event.title}</Text>
@@ -278,14 +157,11 @@ export default function CalendarScreen() {
       <View style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ height: 1440 }}>
           <View style={styles.timelineContainer}>
-            {Array.from({ length: 24 }, (_, hour) => {
-              const label = `${hour.toString().padStart(2, '0')}:00`;
-              return (
-                <View key={hour} style={styles.hourRow}>
-                  <Text style={styles.hourText}>{label}</Text>
-                </View>
-              );
-            })}
+            {Array.from({ length: 24 }, (_, hour) => (
+              <View key={hour} style={styles.hourRow}>
+                <Text style={styles.hourText}>{`${hour.toString().padStart(2, '0')}:00`}</Text>
+              </View>
+            ))}
             <View style={styles.eventsOverlay}>{renderEvents()}</View>
           </View>
         </ScrollView>
@@ -302,60 +178,98 @@ export default function CalendarScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New Meal Event</Text>
 
-            <TouchableOpacity
-              onPress={() => setShowDatePicker(true)}
-              style={styles.datePickerButton}
-            >
-              <Text style={{ fontWeight: '600' }}>
-                Select Date: {format(newEvent.date, 'yyyy-MM-dd')}
-              </Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={newEvent.date}
-                mode="date"
-                display="default"
-                onChange={onChangeNewEventDate}
+            {/* Date picker */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                value={format(newEvent.date, 'yyyy-MM-dd')}
+                onChangeText={(val) => setNewEvent((p) => ({ ...p, date: new Date(val) }))}
+                placeholder="YYYY-MM-DD"
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={{ fontWeight: '600' }}>
+                    Select Date: {format(newEvent.date, 'yyyy-MM-dd')}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={newEvent.date}
+                    mode="date"
+                    display="default"
+                    onChange={(_, d) => d && setNewEvent((p) => ({ ...p, date: d }))}
+                  />
+                )}
+              </>
             )}
 
             <TextInput
               placeholder="Meal Name"
               style={styles.input}
               value={newEvent.title}
-              onChangeText={(text) => setNewEvent((prev) => ({ ...prev, title: text }))}
+              onChangeText={(t) => setNewEvent((p) => ({ ...p, title: t }))}
             />
 
-            {/* REPLACED: Start time input */}
-            <TouchableOpacity
-              onPress={() => setShowStartPicker(true)}
-              style={styles.input}
-            >
-              <Text>{startTime ? format(startTime, 'HH:mm') : 'Select Start Time'}</Text>
-            </TouchableOpacity>
-            {showStartPicker && (
-              <DateTimePicker
-                value={startTime || new Date()}
-                mode="time"
-                display="spinner"
-                onChange={onStartTimeChange}
+            {/* Start */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Start time (HH:mm)"
+                value={newEvent.start}
+                onChangeText={(t) => setNewEvent((p) => ({ ...p, start: t }))}
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowStartPicker(true)}
+                  style={styles.input}
+                >
+                  <Text>{newEvent.start || 'Select Start Time'}</Text>
+                </TouchableOpacity>
+                {showStartPicker && (
+                  <DateTimePicker
+                    value={new Date()}
+                    mode="time"
+                    display="spinner"
+                    onChange={(_, t) =>
+                      t && setNewEvent((p) => ({ ...p, start: format(t, 'HH:mm') }))
+                    }
+                  />
+                )}
+              </>
             )}
 
-            {/* REPLACED: End time input */}
-            <TouchableOpacity
-              onPress={() => setShowEndPicker(true)}
-              style={styles.input}
-            >
-              <Text>{endTime ? format(endTime, 'HH:mm') : 'Select End Time'}</Text>
-            </TouchableOpacity>
-            {showEndPicker && (
-              <DateTimePicker
-                value={endTime || new Date()}
-                mode="time"
-                display="spinner"
-                onChange={onEndTimeChange}
+            {/* End */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                placeholder="End time (HH:mm)"
+                value={newEvent.end}
+                onChangeText={(t) => setNewEvent((p) => ({ ...p, end: t }))}
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowEndPicker(true)}
+                  style={styles.input}
+                >
+                  <Text>{newEvent.end || 'Select End Time'}</Text>
+                </TouchableOpacity>
+                {showEndPicker && (
+                  <DateTimePicker
+                    value={new Date()}
+                    mode="time"
+                    display="spinner"
+                    onChange={(_, t) =>
+                      t && setNewEvent((p) => ({ ...p, end: format(t, 'HH:mm') }))
+                    }
+                  />
+                )}
+              </>
             )}
 
             <TextInput
@@ -363,85 +277,116 @@ export default function CalendarScreen() {
               style={[styles.input, { height: 80 }]}
               value={newEvent.description}
               multiline
-              onChangeText={(text) => setNewEvent((prev) => ({ ...prev, description: text }))}
+              onChangeText={(t) => setNewEvent((p) => ({ ...p, description: t }))}
             />
             <TouchableOpacity style={styles.saveButton} onPress={addEvent}>
               <Text style={styles.saveButtonText}>Save</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setModalVisible(false);
-                setShowDatePicker(false);
-                setShowStartPicker(false);
-                setShowEndPicker(false);
-              }}
-            >
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Edit/Delete Modal */}
+      {/* Edit Modal */}
       <Modal visible={editModalVisible} transparent animationType="slide">
         <View style={styles.modalBackground}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Meal Event</Text>
 
-            <TouchableOpacity
-              onPress={() => setShowEditDatePicker(true)}
-              style={styles.datePickerButton}
-            >
-              <Text style={{ fontWeight: '600' }}>
-                Select Date: {format(newEvent.date, 'yyyy-MM-dd')}
-              </Text>
-            </TouchableOpacity>
-            {showEditDatePicker && (
-              <DateTimePicker
-                value={newEvent.date}
-                mode="date"
-                display="default"
-                onChange={onChangeEditEventDate}
+            {/* Date */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                value={format(newEvent.date, 'yyyy-MM-dd')}
+                onChangeText={(val) => setNewEvent((p) => ({ ...p, date: new Date(val) }))}
+                placeholder="YYYY-MM-DD"
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowEditDatePicker(true)}
+                  style={styles.datePickerButton}
+                >
+                  <Text style={{ fontWeight: '600' }}>
+                    Select Date: {format(newEvent.date, 'yyyy-MM-dd')}
+                  </Text>
+                </TouchableOpacity>
+                {showEditDatePicker && (
+                  <DateTimePicker
+                    value={newEvent.date}
+                    mode="date"
+                    display="default"
+                    onChange={(_, d) => d && setNewEvent((p) => ({ ...p, date: d }))}
+                  />
+                )}
+              </>
             )}
 
             <TextInput
               placeholder="Meal Name"
               style={styles.input}
               value={newEvent.title}
-              onChangeText={(text) => setNewEvent((prev) => ({ ...prev, title: text }))}
+              onChangeText={(t) => setNewEvent((p) => ({ ...p, title: t }))}
             />
 
-            {/* REPLACED: Start time input */}
-            <TouchableOpacity
-              onPress={() => setShowEditStartPicker(true)}
-              style={styles.input}
-            >
-              <Text>{startTime ? format(startTime, 'HH:mm') : 'Select Start Time'}</Text>
-            </TouchableOpacity>
-            {showEditStartPicker && (
-              <DateTimePicker
-                value={startTime || new Date()}
-                mode="time"
-                display="spinner"
-                onChange={onEditStartTimeChange}
+            {/* Start */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Start time (HH:mm)"
+                value={newEvent.start}
+                onChangeText={(t) => setNewEvent((p) => ({ ...p, start: t }))}
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowEditStartPicker(true)}
+                  style={styles.input}
+                >
+                  <Text>{newEvent.start || 'Select Start Time'}</Text>
+                </TouchableOpacity>
+                {showEditStartPicker && (
+                  <DateTimePicker
+                    value={new Date()}
+                    mode="time"
+                    display="spinner"
+                    onChange={(_, t) =>
+                      t && setNewEvent((p) => ({ ...p, start: format(t, 'HH:mm') }))
+                    }
+                  />
+                )}
+              </>
             )}
 
-            {/* REPLACED: End time input */}
-            <TouchableOpacity
-              onPress={() => setShowEditEndPicker(true)}
-              style={styles.input}
-            >
-              <Text>{endTime ? format(endTime, 'HH:mm') : 'Select End Time'}</Text>
-            </TouchableOpacity>
-            {showEditEndPicker && (
-              <DateTimePicker
-                value={endTime || new Date()}
-                mode="time"
-                display="spinner"
-                onChange={onEditEndTimeChange}
+            {/* End */}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                style={styles.input}
+                placeholder="End time (HH:mm)"
+                value={newEvent.end}
+                onChangeText={(t) => setNewEvent((p) => ({ ...p, end: t }))}
               />
+            ) : (
+              <>
+                <TouchableOpacity
+                  onPress={() => setShowEditEndPicker(true)}
+                  style={styles.input}
+                >
+                  <Text>{newEvent.end || 'Select End Time'}</Text>
+                </TouchableOpacity>
+                {showEditEndPicker && (
+                  <DateTimePicker
+                    value={new Date()}
+                    mode="time"
+                    display="spinner"
+                    onChange={(_, t) =>
+                      t && setNewEvent((p) => ({ ...p, end: format(t, 'HH:mm') }))
+                    }
+                  />
+                )}
+              </>
             )}
 
             <TextInput
@@ -449,7 +394,7 @@ export default function CalendarScreen() {
               style={[styles.input, { height: 80 }]}
               value={newEvent.description}
               multiline
-              onChangeText={(text) => setNewEvent((prev) => ({ ...prev, description: text }))}
+              onChangeText={(t) => setNewEvent((p) => ({ ...p, description: t }))}
             />
             <TouchableOpacity style={styles.saveButton} onPress={saveEditedEvent}>
               <Text style={styles.saveButtonText}>Update</Text>
@@ -460,14 +405,7 @@ export default function CalendarScreen() {
             >
               <Text style={[styles.saveButtonText, { color: 'white' }]}>Delete</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setEditModalVisible(false);
-                setShowEditDatePicker(false);
-                setShowEditStartPicker(false);
-                setShowEditEndPicker(false);
-              }}
-            >
+            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -478,10 +416,7 @@ export default function CalendarScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  safeContainer: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -493,18 +428,9 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     backgroundColor: '#FCE38A',
   },
-  date: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  arrow: {
-    fontSize: 22,
-    paddingHorizontal: 10,
-  },
-  timelineContainer: {
-    flex: 1,
-    position: 'relative',
-  },
+  date: { fontSize: 18, fontWeight: 'bold' },
+  arrow: { fontSize: 22, paddingHorizontal: 10 },
+  timelineContainer: { flex: 1, position: 'relative' },
   hourRow: {
     height: 60,
     borderBottomWidth: 1,
@@ -513,16 +439,8 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     paddingLeft: 10,
   },
-  hourText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  eventsOverlay: {
-    position: 'absolute',
-    left: 100,
-    right: 20,
-    top: 0,
-  },
+  hourText: { fontSize: 14, fontWeight: '600' },
+  eventsOverlay: { position: 'absolute', left: 100, right: 20, top: 0 },
   eventBlock: {
     position: 'absolute',
     backgroundColor: '#CEEE67',
@@ -531,9 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     justifyContent: 'center',
   },
-  eventText: {
-    fontSize: 13,
-  },
+  eventText: { fontSize: 13 },
   fab: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 90 : 70,
@@ -547,26 +463,15 @@ const styles = StyleSheet.create({
     elevation: 4,
     zIndex: 10,
   },
-  fabText: {
-    fontSize: 28,
-    color: '#000',
-  },
+  fabText: { fontSize: 28, color: '#000' },
   modalBackground: {
     flex: 1,
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)',
     padding: 20,
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
+  modalContent: { backgroundColor: '#fff', borderRadius: 10, padding: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -582,15 +487,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
     alignItems: 'center',
   },
-  saveButtonText: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  cancelText: {
-    textAlign: 'center',
-    marginTop: 10,
-    color: 'red',
-  },
+  saveButtonText: { fontWeight: 'bold', fontSize: 16 },
+  cancelText: { textAlign: 'center', marginTop: 10, color: 'red' },
   datePickerButton: {
     borderWidth: 1,
     borderColor: '#ccc',
